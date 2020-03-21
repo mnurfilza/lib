@@ -12,12 +12,23 @@ type Table interface {
 	Name() string
 	Fields() (fields []string, dst []interface{})
 	PrimaryKey() (fiedls []string, dst []interface{})
+	Structur() Table
+}
+
+type Params struct {
+	Field string
+	Op    string
+	Value interface{}
+}
+
+type RequestParams struct {
+	Limit int
+	Param []Params
 }
 
 func CreateDatabase(db *sql.DB, nama string) error {
-	query := fmt.Sprintf("CREATE DATABASE %v", nama)
+	query := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", nama)
 	_, err := db.Exec(query)
-
 	return err
 }
 
@@ -26,6 +37,12 @@ func Connect(user, password, host, port, dbname string) (*sql.DB, error) {
 	fmt.Println(db)
 	return db, err
 
+}
+
+func DropDB(db *sql.DB, name string) error {
+	query := fmt.Sprintf("DROP DATABASE IF EXISTS %s", name)
+	_, err := db.Exec(query)
+	return err
 }
 
 func Use(db *sql.DB, name string) error {
@@ -37,6 +54,7 @@ func Use(db *sql.DB, name string) error {
 func CreateTable(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	return err
+
 }
 
 func Insert(db *sql.DB, tb Table) error {
@@ -83,6 +101,62 @@ func Update(db *sql.DB, tb Table, change map[string]interface{}) error {
 		return err
 	}
 	return err
+}
+
+func Delete(db *sql.DB, tb Table) error {
+	pk, dst := tb.PrimaryKey()
+	setWheres := fmt.Sprintf("%s = ?", pk[0])
+
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s", tb.Name(), setWheres)
+	_, err := db.Exec(query, dst...)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func Get(db *sql.DB, tb Table) error {
+	pk, dstPk := tb.PrimaryKey()
+	_, dst := tb.Fields()
+	query := fmt.Sprintf("SELECT * FROM %s WHERE %s = ?", tb.Name(), pk[0])
+	if err := db.QueryRow(query, dstPk...).Scan(dst...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Fetch(db *sql.DB, tb Table, p RequestParams) ([]Table, error) {
+	var param []interface{}
+	var where []string
+	query := fmt.Sprintf("SELECT * FROM %s", tb.Name())
+	if len(p.Param) != 0 {
+		for _, item := range p.Param {
+			where = append(where, fmt.Sprintf("%s = ?", item.Field))
+			param = append(param, item.Value)
+		}
+
+		whereKondisi := strings.Join(where, " AND ")
+		query = fmt.Sprintf("SELECT * FROM %s WHERE %s", tb.Name(), whereKondisi)
+	}
+
+	rows, err := db.Query(query, param...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []Table
+	for rows.Next() {
+		each := tb.Structur()
+		_, dst := each.Fields()
+		var err = rows.Scan(dst...)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, each)
+	}
+	return res, nil
 }
 
 func PlaceHolder(jml int) string {
