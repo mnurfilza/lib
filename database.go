@@ -3,6 +3,8 @@ package lib
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -22,8 +24,9 @@ type Params struct {
 }
 
 type RequestParams struct {
-	Limit int
-	Param []Params
+	Limit  int
+	Offset int
+	Param  []Params
 }
 
 func CreateDatabase(db *sql.DB, nama string) error {
@@ -33,7 +36,7 @@ func CreateDatabase(db *sql.DB, nama string) error {
 }
 
 func Connect(user, password, host, port, dbname string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v:%v)/%v", user, password, host, port, dbname))
+	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?parseTime=True", user, password, host, port, dbname))
 	fmt.Println(db)
 	return db, err
 
@@ -130,14 +133,16 @@ func Fetch(db *sql.DB, tb Table, p RequestParams) ([]Table, error) {
 	var param []interface{}
 	var where []string
 	query := fmt.Sprintf("SELECT * FROM %s", tb.Name())
+
 	if len(p.Param) != 0 {
 		for _, item := range p.Param {
 			where = append(where, fmt.Sprintf("%s = ?", item.Field))
+
 			param = append(param, item.Value)
 		}
 
 		whereKondisi := strings.Join(where, " AND ")
-		query = fmt.Sprintf("SELECT * FROM %s WHERE %s", tb.Name(), whereKondisi)
+		query = query + " WHERE " + whereKondisi
 	}
 
 	rows, err := db.Query(query, param...)
@@ -167,4 +172,30 @@ func PlaceHolder(jml int) string {
 	placeholder := strings.Join(jumlah, ",")
 	return placeholder
 
+}
+
+func QueryLimitOffset(values url.Values) (int, int, error) {
+	lim := values.Get("limit")
+	off := values.Get("offset")
+	if limit != "" && offset != "" {
+		limit, err := strconv.Atoi(limit)
+		if err != nil {
+			return nil, nil, err
+		}
+		offset, err := strconv.Atoi(offset)
+		if err != nil {
+			return nil, nil, err
+		}
+		return limit, offset, err
+	}
+	return 0, 0, err
+}
+
+func QueryParams(values url.Values) ([]lib.Params, error) {
+	params := values.Get("params")
+
+	if params != "" {
+
+	}
+	return nil, nil
 }
