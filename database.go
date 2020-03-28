@@ -191,11 +191,22 @@ func QueryLimitOffset(values url.Values) (int, int, error) {
 	return 0, 0, err
 }
 
-func QueryParams(values url.Values) ([]lib.Params, error) {
-	params := values.Get("params")
-
-	if params != "" {
-
+func QueryParams(values url.Values) ([]Params, error) {
+	val := values.Get("params")
+	var params []Params
+	if val != "" {
+		param := strings.Split(val, ":")
+		for _, item := range param {
+			temp := Params{}
+			obj := strings.Split(item, ",")
+			if len(obj) != 3 {
+				return nil, fmt.Errorf("Parameter Tidak Sesuai")
+			}
+			temp.Field = obj[0]
+			temp.Op = obj[1]
+			temp.Value = obj[2]
+			params = append(params, temp)
+		}
 	}
-	return nil, nil
+	return params, nil
 }
