@@ -225,3 +225,9 @@ func QueryOrder(value url.Values) (string, error) {
 func QuerySort(values url.Values) (string, error) {
 	return values.Get("sort"), nil
 }
+
+func countColumn(db *sql.DB, tb Table) (int, error) {
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", tb.Name())
+	fmt.Println(query)
+	return 0, nil
+}
