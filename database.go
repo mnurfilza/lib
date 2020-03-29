@@ -24,9 +24,11 @@ type Params struct {
 }
 
 type RequestParams struct {
-	Limit  int
-	Offset int
-	Param  []Params
+	Limit   int
+	Offset  int
+	Param   []Params
+	OrderBy string
+	Sort    string
 }
 
 func CreateDatabase(db *sql.DB, nama string) error {
@@ -145,6 +147,10 @@ func Fetch(db *sql.DB, tb Table, p RequestParams) ([]Table, error) {
 		query = query + " WHERE " + whereKondisi
 	}
 
+	if p.OrderBy != "" && p.Sort != "" {
+		query = query + " ORDER BY " + p.OrderBy + p.Sort
+	}
+
 	rows, err := db.Query(query, param...)
 	if err != nil {
 		return nil, err
@@ -177,18 +183,18 @@ func PlaceHolder(jml int) string {
 func QueryLimitOffset(values url.Values) (int, int, error) {
 	lim := values.Get("limit")
 	off := values.Get("offset")
-	if limit != "" && offset != "" {
-		limit, err := strconv.Atoi(limit)
+	if lim != "" && off != "" {
+		limit, err := strconv.Atoi(lim)
 		if err != nil {
-			return nil, nil, err
+			return 0, 0, err
 		}
-		offset, err := strconv.Atoi(offset)
+		offset, err := strconv.Atoi(off)
 		if err != nil {
-			return nil, nil, err
+			return 0, 0, err
 		}
 		return limit, offset, err
 	}
-	return 0, 0, err
+	return 0, 0, nil
 }
 
 func QueryParams(values url.Values) ([]Params, error) {
@@ -209,4 +215,13 @@ func QueryParams(values url.Values) ([]Params, error) {
 		}
 	}
 	return params, nil
+}
+
+func QueryOrder(value url.Values) (string, error) {
+	val := value.Get("orderby")
+	return val, nil
+}
+
+func QuerySort(values url.Values) (string, error) {
+	return values.Get("sort"), nil
 }
